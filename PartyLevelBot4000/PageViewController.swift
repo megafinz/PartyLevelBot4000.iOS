@@ -24,6 +24,14 @@ class PageViewController : UIPageViewController {
             setViewControllers([firstVc], direction: .forward, animated: true, completion: nil)
         }
     }
+
+    override func viewWillAppear(_ animated: Bool) {
+        UIApplication.shared.isIdleTimerDisabled = true
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        UIApplication.shared.isIdleTimerDisabled = false
+    }
 }
 
 extension PageViewController: UIPageViewControllerDataSource

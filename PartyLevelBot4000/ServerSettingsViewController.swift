@@ -4,7 +4,12 @@ import SocketIO
 import UIKit
 
 class ServerSettingsViewController: UIViewController {
-    private var isConnected = false
+    private enum ConnectionState {
+        case disconnected
+        case connecting
+        case connected
+    }
+    private var connectionState : ConnectionState = .disconnected
     private var socketManager : SocketManager!
     private var wsSub : Disposable!
 
@@ -17,13 +22,16 @@ class ServerSettingsViewController: UIViewController {
         guard let host = hostTextField?.text, let port = portTextField?.text else {
             return
         }
-        if !self.isConnected {
+        if self.connectionState == .disconnected {
             self.socketManager = SocketManager(socketURL: URL(string: "\(host):\(port)")!)
             let socket = self.socketManager.defaultSocket
 
+            self.setConnectionStatus("Connecting…")
+            self.setConnectionState(.connecting)
+
             socket.on(clientEvent: .connect) { _, _ in
                 self.setConnectionStatus("Connected")
-                self.setIsConnected(true)
+                self.setConnectionState(.connected)
 
                 let engine = AudioEngine.sharedInstance()
 
@@ -38,13 +46,13 @@ class ServerSettingsViewController: UIViewController {
             socket.on(clientEvent: .error) { reason, _ in
                 self.wsSub?.dispose()
                 self.setConnectionStatus("Disconnected: \(reason)")
-                self.setIsConnected(false)
+                self.setConnectionState(.disconnected)
             }
 
             socket.on(clientEvent: .disconnect) { reason, _ in
                 self.wsSub?.dispose()
                 self.setConnectionStatus("Disconnected: \(reason)")
-                self.setIsConnected(false)
+                self.setConnectionState(.disconnected)
             }
 
             socket.connect()
@@ -61,12 +69,19 @@ class ServerSettingsViewController: UIViewController {
         hideKeyboardWhenTappedAround()
     }
 
-    private func setIsConnected(_ value: Bool) {
+    private func setConnectionState(_ value: ConnectionState) {
         guard let b = self.connectDisconnectButton else {
             return
         }
-        self.isConnected = value
-        b.setTitle(value ? "Disconnect" : "Connect", for: .normal)
+
+        self.connectionState = value
+
+        switch value {
+            case .connected, .connecting:
+                b.setTitle("Disconnect", for: .normal)
+            case .disconnected:
+                b.setTitle("Connect", for: .normal)
+        }
     }
 
     private func setConnectionStatus(_ text: String) {
